@@ -16,7 +16,7 @@ def run_cmd(cmd):
         return []
 
 def get_manifest_url(youtube_url):
-    base = ["yt-dlp", "--geo-bypass", "--cookies", COOKIES_FILE]
+    base = ["yt-dlp", "--cookies", COOKIES_FILE]
     tries = [
         base + ["-v", "-g", youtube_url],
         base + ["-f", "bestvideo+bestaudio", "--get-url", youtube_url],
