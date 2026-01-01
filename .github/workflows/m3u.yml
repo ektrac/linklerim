@@ -9,6 +9,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: List files
+        run: ls -R $GITHUB_WORKSPACE
+        
       - name: Checkout repo
         uses: actions/checkout@v3
 
@@ -20,17 +23,11 @@ jobs:
       - name: Install yt-dlp
         run: pip install yt-dlp
         
-      - name: List files
-        run: ls -R $GITHUB_WORKSPACE
-        
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: List files
-        run: ls -R $GITHUB_WORKSPACE
-
       - name: Run script
-        run: python csv_to_m3u_with_ytdlp.py
+        run: python yapsunu.py
 
       - name: Commit and push playlist
         run: |
