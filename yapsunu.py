@@ -1,10 +1,10 @@
+#!/usr/bin/env python3
+import csv
 import subprocess
 import os
-outfile = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "playlist.m3u")
-generate_m3u("input.csv", outfile)
 
 def get_manifest_url(youtube_url):
-    # Önce -g dene
+    # Önce -g dene (verbose)
     try:
         result = subprocess.run(
             ["yt-dlp", "-v", "-g", youtube_url],
@@ -42,3 +42,22 @@ def get_manifest_url(youtube_url):
 
     print(f"Hata: {youtube_url} için oynatılabilir link alınamadı")
     return None
+
+def generate_m3u(csv_file, m3u_file):
+    with open(csv_file, newline='', encoding='utf-8') as f, open(m3u_file, 'w', encoding='utf-8') as out:
+        reader = csv.reader(f)
+        out.write("#EXTM3U\n")
+        for row in reader:
+            if not row:
+                continue
+            name, url = row[0], row[1]
+            manifest_url = get_manifest_url(url)
+            if manifest_url:
+                out.write(f"#EXTINF:-1,{name}\n{manifest_url}\n")
+            else:
+                print(f"Hata: {url} için oynatılabilir link bulunamadı.")
+
+if __name__ == "__main__":
+    outfile = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "playlist.m3u")
+    generate_m3u("input.csv", outfile)
+    print(f"playlist.m3u oluşturuldu: {outfile}")
