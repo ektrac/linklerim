@@ -1,11 +1,11 @@
 name: Generate M3U
 
 permissions:
-  contents: write
+  contents: write   # push için gerekli
 
 on:
   schedule:
-    - cron: "0 */1 * * *"   # Her saat yenile
+    - cron: "*/30 * * * *"   # Her 30 dakikada bir yenile
   workflow_dispatch:
 
 jobs:
@@ -29,6 +29,9 @@ jobs:
       - name: Install yt-dlp
         run: pip install -U yt-dlp
 
+      - name: Show yt-dlp version
+        run: yt-dlp --version
+
       - name: Install Node.js (JS runtime for yt-dlp)
         uses: actions/setup-node@v3
         with:
@@ -40,8 +43,18 @@ jobs:
       - name: Write Dailymotion cookies
         run: echo "${{ secrets.DMDLP_COOKIES }}" > dmcookies.txt
 
+      - name: Debug cookies
+        run: |
+          echo "=== YouTube cookies ==="
+          head -n 20 ytcookies.txt || true
+          echo "=== Dailymotion cookies ==="
+          head -n 20 dmcookies.txt || true
+
       - name: Run script
         run: python yapsunu.py
+
+      - name: Show playlist
+        run: cat playlist.m3u || true
 
       - name: Commit and push playlist
         run: |
