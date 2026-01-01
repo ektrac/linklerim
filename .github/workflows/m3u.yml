@@ -19,7 +19,10 @@ jobs:
 
       - name: Install yt-dlp
         run: pip install yt-dlp
-
+        
+      - name: List files
+        run: ls -R $GITHUB_WORKSPACE
+        
       - name: Checkout repo
         uses: actions/checkout@v3
 
