@@ -1,4 +1,7 @@
 import subprocess
+import os
+outfile = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "playlist.m3u")
+generate_m3u("input.csv", outfile)
 
 def get_manifest_url(youtube_url):
     # Önce -g dene
