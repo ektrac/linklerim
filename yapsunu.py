@@ -44,12 +44,19 @@ def generate_m3u(csv_file, m3u_file):
                 print(f"Geçersiz URL: {url}")
                 continue
 
-            # URL’ye göre cookies seç
             cookies = None
             if "youtube.com" in url:
                 cookies = YT_COOKIES
             elif "dailymotion.com" in url:
                 cookies = DM_COOKIES
+
+            # Dailymotion için embed fallback
+            if "dailymotion.com" in url:
+                embed_url = url.replace("www.dailymotion.com/video/", "www.dailymotion.com/embed/video/")
+                out.write(f"#EXTINF:-1,{name} (embed)\n")
+                out.write("#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)\n")
+                out.write("#EXTVLCOPT:http-referrer=https://www.dailymotion.com/\n")
+                out.write(f"{embed_url}\n")
 
             hls = get_hls_url(url, cookies)
             if hls:
