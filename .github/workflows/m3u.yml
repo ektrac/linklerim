@@ -1,8 +1,11 @@
 name: Generate M3U
 
+permissions:
+  contents: write
+
 on:
   schedule:
-    - cron: "0 */2 * * *"   # Her 2 saatte bir yenile
+    - cron: "0 */1 * * *"   # Her saat yenile
   workflow_dispatch:
 
 jobs:
@@ -13,6 +16,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Show CSV
         run: cat input.csv
@@ -30,16 +34,19 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Write cookies
-        run: echo "${{ secrets.YTDLP_COOKIES }}" > cookies.txt
+      - name: Write YouTube cookies
+        run: echo "${{ secrets.YTDLP_COOKIES }}" > ytcookies.txt
+
+      - name: Write Dailymotion cookies
+        run: echo "${{ secrets.DMDLP_COOKIES }}" > dmcookies.txt
 
       - name: Run script
         run: python yapsunu.py
 
       - name: Commit and push playlist
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           if [ -f playlist.m3u ]; then
             git add playlist.m3u
             if ! git diff --cached --quiet; then
