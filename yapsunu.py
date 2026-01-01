@@ -5,7 +5,7 @@ YT_COOKIES = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "ytcookies.tx
 DM_COOKIES = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "dmcookies.txt")
 
 def get_hls_url(url, cookies_file=None):
-    base = ["yt-dlp", "--dump-json"]
+    base = ["yt-dlp", "--geo-bypass", "--dump-json"]
     if cookies_file and os.path.exists(cookies_file):
         base += ["--cookies", cookies_file]
     try:
