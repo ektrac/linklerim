@@ -4,7 +4,7 @@ def get_manifest_url(youtube_url):
     # Önce -g dene
     try:
         result = subprocess.run(
-            ["yt-dlp", "-g", youtube_url],
+            ["yt-dlp", "-v", "-g", youtube_url],
             capture_output=True,
             text=True,
             check=True
