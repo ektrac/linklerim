@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
-import csv, subprocess, os, json
+import csv
+import subprocess
+import os
 
-YT_COOKIES = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "ytcookies.txt")
-DM_COOKIES = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "dmcookies.txt")
+COOKIES_FILE = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "cookies.txt")
 
-def get_hls_url(url, cookies_file=None):
-    base = ["yt-dlp", "--geo-bypass", "--dump-json"]
-    if cookies_file and os.path.exists(cookies_file):
-        base += ["--cookies", cookies_file]
+def run_cmd(cmd):
     try:
-        r = subprocess.run(base + [url], capture_output=True, text=True, check=True)
-        data = json.loads(r.stdout)
-
-        # Öncelik: HLS manifest URL
-        if "hls_manifest_url" in data:
-            return data["hls_manifest_url"]
-
-        # Alternatif: formats içinde HLS protokolü
-        for f in data.get("formats", []):
-            if f.get("protocol") == "m3u8" and f.get("url"):
-                return f["url"]
-
-        # Son çare: en iyi mp4
-        for f in data.get("formats", []):
-            if f.get("ext") == "mp4" and f.get("url"):
-                return f["url"]
-
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return result.stdout.strip().split("\n")
     except subprocess.CalledProcessError as e:
-        print(f"[yt-dlp dump-json hata] {url} code={e.returncode}\nSTDERR:\n{e.stderr.strip()}")
+        print(f"[yt-dlp hata] cmd={' '.join(cmd)} code={e.returncode}")
+        print(f"STDOUT:\n{e.stdout.strip()}")
+        print(f"STDERR:\n{e.stderr.strip()}")
+        return []
 
+def get_manifest_url(youtube_url):
+    base = ["yt-dlp", "--cookies", COOKIES_FILE]
+    tries = [
+        base + ["-v", "-g", youtube_url],
+        base + ["-f", "bestvideo+bestaudio", "--get-url", youtube_url],
+        base + ["-f", "best[ext=mp4]", "--get-url", youtube_url],
+        base + ["-f", "bestaudio", "--get-url", youtube_url],
+    ]
+    for cmd in tries:
+        urls = run_cmd(cmd)
+        if urls:
+            return urls[0]
+    print(f"Hata: {youtube_url} için oynatılabilir link alınamadı")
     return None
 
 def generate_m3u(csv_file, m3u_file):
@@ -40,33 +39,9 @@ def generate_m3u(csv_file, m3u_file):
                 print(f"Satır hatalı: {row}")
                 continue
             name, url = row[0].strip(), row[1].strip()
-            if not url.startswith("http"):
-                print(f"Geçersiz URL: {url}")
-                continue
-
-            cookies = None
-            if "youtube.com" in url:
-                cookies = YT_COOKIES
-            elif "dailymotion.com" in url:
-                cookies = DM_COOKIES
-
-            # Dailymotion için embed fallback
-            if "dailymotion.com" in url:
-                embed_url = url.replace("www.dailymotion.com/video/", "www.dailymotion.com/embed/video/")
-                out.write(f"#EXTINF:-1,{name} (embed)\n")
-                out.write("#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)\n")
-                out.write("#EXTVLCOPT:http-referrer=https://www.dailymotion.com/\n")
-                out.write(f"{embed_url}\n")
-
-            hls = get_hls_url(url, cookies)
-            if hls:
-                out.write(f"#EXTINF:-1,{name}\n")
-                out.write("#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)\n")
-                if "youtube.com" in url:
-                    out.write("#EXTVLCOPT:http-referrer=https://www.youtube.com/\n")
-                if "dailymotion.com" in url:
-                    out.write("#EXTVLCOPT:http-referrer=https://www.dailymotion.com/\n")
-                out.write(f"{hls}\n")
+            manifest_url = get_manifest_url(url)
+            if manifest_url:
+                out.write(f"#EXTINF:-1,{name}\n{manifest_url}\n")
             else:
                 print(f"Hata: {url} için oynatılabilir link bulunamadı.")
 
