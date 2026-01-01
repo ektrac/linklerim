@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 import csv, subprocess, os, json
 
-COOKIES_FILE = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "cookies.txt")
+YT_COOKIES = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "ytcookies.txt")
+DM_COOKIES = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "dmcookies.txt")
 
-def get_hls_url(url):
-    base = ["yt-dlp", "--cookies", COOKIES_FILE, "--dump-json", url]
+def get_hls_url(url, cookies_file=None):
+    base = ["yt-dlp", "--dump-json"]
+    if cookies_file and os.path.exists(cookies_file):
+        base += ["--cookies", cookies_file]
     try:
-        r = subprocess.run(base, capture_output=True, text=True, check=True)
+        r = subprocess.run(base + [url], capture_output=True, text=True, check=True)
         data = json.loads(r.stdout)
 
         # Öncelik: HLS manifest URL
@@ -40,10 +43,17 @@ def generate_m3u(csv_file, m3u_file):
             if not url.startswith("http"):
                 print(f"Geçersiz URL: {url}")
                 continue
-            hls = get_hls_url(url)
+
+            # URL’ye göre cookies seç
+            cookies = None
+            if "youtube.com" in url:
+                cookies = YT_COOKIES
+            elif "dailymotion.com" in url:
+                cookies = DM_COOKIES
+
+            hls = get_hls_url(url, cookies)
             if hls:
                 out.write(f"#EXTINF:-1,{name}\n")
-                # Header ekleme
                 out.write("#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)\n")
                 if "youtube.com" in url:
                     out.write("#EXTVLCOPT:http-referrer=https://www.youtube.com/\n")
