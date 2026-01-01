@@ -1,33 +1,35 @@
 #!/usr/bin/env python3
-import csv
-import subprocess
-import os
+import csv, subprocess, os, json
 
 COOKIES_FILE = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "cookies.txt")
 
 def run_cmd(cmd):
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return result.stdout.strip().split("\n")
+        r = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return r.stdout.strip()
     except subprocess.CalledProcessError as e:
         print(f"[yt-dlp hata] cmd={' '.join(cmd)} code={e.returncode}")
         print(f"STDOUT:\n{e.stdout.strip()}")
         print(f"STDERR:\n{e.stderr.strip()}")
-        return []
+        return ""
 
-def get_manifest_url(youtube_url):
-    base = ["yt-dlp", "--cookies", COOKIES_FILE]
-    tries = [
-        base + ["-v", "-g", youtube_url],
-        base + ["-f", "bestvideo+bestaudio", "--get-url", youtube_url],
-        base + ["-f", "best[ext=mp4]", "--get-url", youtube_url],
-        base + ["-f", "bestaudio", "--get-url", youtube_url],
-    ]
-    for cmd in tries:
-        urls = run_cmd(cmd)
-        if urls:
-            return urls[0]
-    print(f"Hata: {youtube_url} için oynatılabilir link alınamadı")
+def get_hls_url(url):
+    base = ["yt-dlp", "--cookies", COOKIES_FILE, "--dump-json", url]
+    try:
+        r = subprocess.run(base, capture_output=True, text=True, check=True)
+        data = json.loads(r.stdout)
+        # Öncelik: HLS manifest
+        if "hls_manifest_url" in data:
+            return data["hls_manifest_url"]
+        for f in data.get("formats", []):
+            if f.get("protocol") == "m3u8" and f.get("url"):
+                return f["url"]
+        # Fallback: en iyi mp4
+        for f in data.get("formats", []):
+            if f.get("ext") == "mp4" and f.get("url"):
+                return f["url"]
+    except subprocess.CalledProcessError as e:
+        print(f"[yt-dlp dump-json hata] {url} code={e.returncode}\nSTDERR:\n{e.stderr.strip()}")
     return None
 
 def generate_m3u(csv_file, m3u_file):
@@ -39,9 +41,12 @@ def generate_m3u(csv_file, m3u_file):
                 print(f"Satır hatalı: {row}")
                 continue
             name, url = row[0].strip(), row[1].strip()
-            manifest_url = get_manifest_url(url)
-            if manifest_url:
-                out.write(f"#EXTINF:-1,{name}\n{manifest_url}\n")
+            if not url.startswith("http"):
+                print(f"Geçersiz URL: {url}")
+                continue
+            hls = get_hls_url(url)
+            if hls:
+                out.write(f"#EXTINF:-1,{name}\n{hls}\n")
             else:
                 print(f"Hata: {url} için oynatılabilir link bulunamadı.")
 
