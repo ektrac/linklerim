@@ -1,59 +1,54 @@
-#!/usr/bin/env python3
-import csv, subprocess, os, json
+name: Generate M3U
 
-COOKIES_FILE = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "cookies.txt")
+on:
+  schedule:
+    - cron: "0 */2 * * *"   # Her 2 saatte bir yenile
+  workflow_dispatch:
 
-def get_hls_url(url):
-    base = ["yt-dlp", "--cookies", COOKIES_FILE, "--dump-json", url]
-    try:
-        r = subprocess.run(base, capture_output=True, text=True, check=True)
-        data = json.loads(r.stdout)
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-        # Öncelik: HLS manifest URL
-        if "hls_manifest_url" in data:
-            return data["hls_manifest_url"]
+      - name: Show CSV
+        run: cat input.csv
 
-        # Alternatif: formats içinde HLS protokolü
-        for f in data.get("formats", []):
-            if f.get("protocol") == "m3u8" and f.get("url"):
-                return f["url"]
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-        # Son çare: en iyi mp4
-        for f in data.get("formats", []):
-            if f.get("ext") == "mp4" and f.get("url"):
-                return f["url"]
+      - name: Install yt-dlp
+        run: pip install -U yt-dlp
 
-    except subprocess.CalledProcessError as e:
-        print(f"[yt-dlp dump-json hata] {url} code={e.returncode}\nSTDERR:\n{e.stderr.strip()}")
+      - name: Install Node.js (JS runtime for yt-dlp)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-    return None
+      - name: Write cookies
+        run: echo "${{ secrets.YTDLP_COOKIES }}" > cookies.txt
 
-def generate_m3u(csv_file, m3u_file):
-    with open(csv_file, newline='', encoding='utf-8') as f, open(m3u_file, 'w', encoding='utf-8') as out:
-        reader = csv.reader(f)
-        out.write("#EXTM3U\n")
-        for row in reader:
-            if len(row) < 2:
-                print(f"Satır hatalı: {row}")
-                continue
-            name, url = row[0].strip(), row[1].strip()
-            if not url.startswith("http"):
-                print(f"Geçersiz URL: {url}")
-                continue
-            hls = get_hls_url(url)
-            if hls:
-                out.write(f"#EXTINF:-1,{name}\n")
-                # Header ekleme
-                out.write("#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)\n")
-                if "youtube.com" in url:
-                    out.write("#EXTVLCOPT:http-referrer=https://www.youtube.com/\n")
-                if "dailymotion.com" in url:
-                    out.write("#EXTVLCOPT:http-referrer=https://www.dailymotion.com/\n")
-                out.write(f"{hls}\n")
-            else:
-                print(f"Hata: {url} için oynatılabilir link bulunamadı.")
+      - name: Run script
+        run: python yapsunu.py
 
-if __name__ == "__main__":
-    outfile = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "playlist.m3u")
-    generate_m3u("input.csv", outfile)
-    print(f"playlist.m3u oluşturuldu: {outfile}")
+      - name: Commit and push playlist
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          if [ -f playlist.m3u ]; then
+            git add playlist.m3u
+            if ! git diff --cached --quiet; then
+              git commit -m "Update playlist"
+              git pull --rebase
+              git push
+            else
+              echo "No changes, skipping push."
+            fi
+          else
+            echo "playlist.m3u bulunamadı, push atlanıyor."
+          fi
