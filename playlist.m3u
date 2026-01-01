@@ -1,9 +1,3 @@
 #EXTM3U
-#EXTINF:-1,İsviçre'de kayak merkezinin yılbaşı partisinde yangın: Çok sayıda ölü var (embed)
-#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)
-#EXTVLCOPT:http-referrer=https://www.dailymotion.com/
-https://geo.dailymotion.com/player.html?video=x9wvckm
 #EXTINF:-1,İsviçre'de kayak merkezinin yılbaşı partisinde yangın: Çok sayıda ölü var
-#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)
-#EXTVLCOPT:http-referrer=https://www.dailymotion.com/
-https://proxy-004.ix7.dailymotion.com/sec(k_z1syuthVR6lI2l2U2CeUH-MwPzYy2-v_hJzTPuL-U95vSz3yfRUq5LbTq_JfhR03zwrgc4o9jnxVh_CQA3a3hHhNDy5PpT-K_G3WJZL9mczNYkzcRKssNSpilZI4NYmwA_d1DBgDx7ColbCT8Txw)/video/fmp4/599405926/h264_aac/3/manifest.m3u8
+https://proxy-004.ix7.dailymotion.com/sec(xA0x592o7Cs0YeE_OieidbH_wWdRq-A3d7ngSM69eqPnvVzv-4Le1laqgp0YcVX1AsSS6DaXvGunudfiSbZMMTStS4QXUpnFkztNd_P-9VgAgbGnmhqZO46bH3tSakS25u_TuRgCtxBIsHlGhDWLjg)/video/fmp4/599405926/h264_aac/3/manifest.m3u8
