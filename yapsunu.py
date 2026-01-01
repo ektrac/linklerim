@@ -13,7 +13,11 @@ def get_manifest_url(youtube_url):
         if urls:
             return urls[0]
     except subprocess.CalledProcessError as e:
-        print(f"[yt-dlp -g hata] {youtube_url} -> {e}")
+        print(f"[yt-dlp -g hata] URL={youtube_url}")
+        print(f"Komut: {' '.join(e.cmd)}")
+        print(f"Çıkış kodu: {e.returncode}")
+        print(f"STDOUT:\n{e.stdout.strip()}")
+        print(f"STDERR:\n{e.stderr.strip()}")
 
     # Fallback: doğrudan oynatılabilir URL denemeleri
     formats = [
@@ -28,7 +32,10 @@ def get_manifest_url(youtube_url):
             if urls:
                 return urls[0]
         except subprocess.CalledProcessError as e:
-            print(f"[yt-dlp fallback hata] cmd={' '.join(cmd)} -> {e}")
+            print(f"[yt-dlp fallback hata] cmd={' '.join(cmd)}")
+            print(f"Çıkış kodu: {e.returncode}")
+            print(f"STDOUT:\n{e.stdout.strip()}")
+            print(f"STDERR:\n{e.stderr.strip()}")
 
     print(f"Hata: {youtube_url} için oynatılabilir link alınamadı")
     return None
