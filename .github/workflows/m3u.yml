@@ -22,7 +22,10 @@ jobs:
 
       - name: Install yt-dlp
         run: pip install yt-dlp
-        
+      
+      - name: Install yt-dlp
+        run: pip install -U yt-dlp
+      
       - name: Checkout repo
         uses: actions/checkout@v3
 
