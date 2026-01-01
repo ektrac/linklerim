@@ -15,19 +15,33 @@ def run_cmd(cmd):
         print(f"STDERR:\n{e.stderr.strip()}")
         return []
 
-def get_manifest_url(youtube_url):
+def get_manifest_url(url):
     base = ["yt-dlp", "--cookies", COOKIES_FILE]
-    tries = [
-        base + ["-v", "-g", youtube_url],
-        base + ["-f", "bestvideo+bestaudio", "--get-url", youtube_url],
-        base + ["-f", "best[ext=mp4]", "--get-url", youtube_url],
-        base + ["-f", "bestaudio", "--get-url", youtube_url],
-    ]
+
+    if "youtube.com" in url or "youtu.be" in url:
+        tries = [
+            base + ["-v", "-g", url],
+            base + ["-f", "bestvideo+bestaudio", "--get-url", url],
+            base + ["-f", "best[ext=mp4]", "--get-url", url],
+            base + ["-f", "bestaudio", "--get-url", url],
+        ]
+    elif "dailymotion.com" in url:
+        # Dailymotion için vod CDN filtresi
+        tries = [
+            base + ["-f", "best[protocol=m3u8][url*=vod]", "--get-url", url],
+            base + ["-f", "best[protocol=m3u8]", "--get-url", url],
+            base + ["-f", "best", "--get-url", url],
+        ]
+    else:
+        print(f"Bilinmeyen platform: {url}")
+        return None
+
     for cmd in tries:
         urls = run_cmd(cmd)
         if urls:
             return urls[0]
-    print(f"Hata: {youtube_url} için oynatılabilir link alınamadı")
+
+    print(f"Hata: {url} için oynatılabilir link alınamadı")
     return None
 
 def generate_m3u(csv_file, m3u_file):
