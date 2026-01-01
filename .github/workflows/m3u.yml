@@ -20,8 +20,15 @@ jobs:
       - name: Install yt-dlp
         run: pip install yt-dlp
 
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: List files
+        run: ls -R $GITHUB_WORKSPACE
+
       - name: Run script
         run: python $GITHUB_WORKSPACE/csv_to_m3u_with_ytdlp.py
+
 
       - name: Commit and push playlist
         run: |
