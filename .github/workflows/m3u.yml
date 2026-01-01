@@ -3,7 +3,7 @@ name: Generate M3U
 on:
   schedule:
     - cron: "0 3 * * *"   # Her gece 03:00 UTC
-  workflow_dispatch:       # Manuel tetikleme
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0   # push için tam geçmiş gerekli
+          fetch-depth: 0
 
       - name: List files (debug)
         run: ls -R $GITHUB_WORKSPACE
@@ -24,6 +24,14 @@ jobs:
 
       - name: Install yt-dlp
         run: pip install -U yt-dlp
+
+      - name: Install Node.js (JS runtime for yt-dlp)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Write cookies
+        run: echo "${{ secrets.YTDLP_COOKIES }}" > cookies.txt
 
       - name: Run script
         run: python yapsunu.py
