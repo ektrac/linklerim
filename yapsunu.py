@@ -48,9 +48,10 @@ def generate_m3u(csv_file, m3u_file):
         reader = csv.reader(f)
         out.write("#EXTM3U\n")
         for row in reader:
-            if not row:
+            if len(row) < 2:
+                print(f"Satır hatalı: {row}")
                 continue
-            name, url = row[0], row[1]
+            name, url = row[0].strip(), row[1].strip()
             manifest_url = get_manifest_url(url)
             if manifest_url:
                 out.write(f"#EXTINF:-1,{name}\n{manifest_url}\n")
