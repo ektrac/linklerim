@@ -42,7 +42,14 @@ def generate_m3u(csv_file, m3u_file):
                 continue
             hls = get_hls_url(url)
             if hls:
-                out.write(f"#EXTINF:-1,{name}\n{hls}\n")
+                out.write(f"#EXTINF:-1,{name}\n")
+                # Header ekleme
+                out.write("#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)\n")
+                if "youtube.com" in url:
+                    out.write("#EXTVLCOPT:http-referrer=https://www.youtube.com/\n")
+                if "dailymotion.com" in url:
+                    out.write("#EXTVLCOPT:http-referrer=https://www.dailymotion.com/\n")
+                out.write(f"{hls}\n")
             else:
                 print(f"Hata: {url} için oynatılabilir link bulunamadı.")
 
