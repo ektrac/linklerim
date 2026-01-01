@@ -1,45 +1,37 @@
-#!/usr/bin/env python3
-import csv, subprocess, time
+import csv
+import subprocess
 
-def run_cmd(cmd):
+def get_manifest_url(youtube_url):
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, check=True)
+        # yt-dlp -g komutunu çalıştır
+        result = subprocess.run(
+            ["yt-dlp", "-g", youtube_url],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        # Birden fazla satır dönebilir (video + ses ayrı olabilir)
+        urls = result.stdout.strip().split("\n")
+        return urls[0] if urls else None
     except subprocess.CalledProcessError as e:
-        # Ayrıntılı hata logu
-        print(f"[yt-dlp error] cmd={' '.join(cmd)} code={e.returncode}\nSTDERR:\n{e.stderr.strip()}")
+        print(f"Hata: {youtube_url} için manifest alınamadı -> {e}")
         return None
 
-def get_playable_url(youtube_url):
-    # Sıra: en iyi video+ses → mp4 tek parça → sadece ses
-    tries = [
-        ["yt-dlp", "-f", "bestvideo+bestaudio", "--get-url", youtube_url],
-        ["yt-dlp", "-f", "best[ext=mp4]", "--get-url", youtube_url],
-        ["yt-dlp", "-f", "bestaudio", "--get-url", youtube_url],
-    ]
-    for cmd in tries:
-        r = run_cmd(cmd)
-        if r and r.stdout.strip():
-            return r.stdout.strip().split("\n")[0]
-    # Son çare: manifest denemesi (bazı içeriklerde yardımcı olur)
-    r = run_cmd(["yt-dlp", "-g", youtube_url])
-    if r and r.stdout.strip():
-        return r.stdout.strip().split("\n")[0]
-    return None
+rows = []
+with open("input.csv", newline="", encoding="utf-8") as f:
+    reader = csv.reader(f)
+    next(reader)  # başlık satırını atla
+    for title, url in reader:
+        rows.append((title.strip(), url.strip()))
 
-def generate_m3u(csv_file, m3u_file):
-    with open(csv_file, newline='', encoding='utf-8') as f, open(m3u_file, 'w', encoding='utf-8') as out:
-        reader = csv.reader(f)
-        out.write("#EXTM3U\n")
-        for row in reader:
-            if not row: 
-                continue
-            name, url = row[0], row[1]
-            playable = get_playable_url(url)
-            if playable:
-                out.write(f"#EXTINF:-1,{name}\n{playable}\n")
-            else:
-                print(f"Hata: {url} için oynatılabilir link/manifest alınamadı.")
+lines = ["#EXTM3U"]
+for title, url in rows:
+    manifest = get_manifest_url(url)
+    if manifest:
+        lines.append(f'#EXTINF:-1 tvg-name="{title}" group-title="YouTube", {title}')
+        lines.append(manifest)
 
-if __name__ == "__main__":
-    generate_m3u("input.csv", "playlist.m3u")
-    print("playlist.m3u oluşturuldu.")
+with open("playlist.m3u", "w", encoding="utf-8") as f:
+    f.write("\n".join(lines))
+
+print("playlist.m3u oluşturuldu.")
