@@ -2,7 +2,7 @@ name: Generate M3U
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # Her gece 03:00 UTC
+    - cron: "0 */2 * * *"   # Her 2 saatte bir yenile
   workflow_dispatch:
 
 jobs:
@@ -14,8 +14,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: List files (debug)
-        run: ls -R $GITHUB_WORKSPACE
+      - name: Show CSV
+        run: cat input.csv
 
       - name: Set up Python
         uses: actions/setup-python@v4
