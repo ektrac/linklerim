@@ -3,33 +3,29 @@ import csv, subprocess, os, json
 
 COOKIES_FILE = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "cookies.txt")
 
-def run_cmd(cmd):
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return r.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        print(f"[yt-dlp hata] cmd={' '.join(cmd)} code={e.returncode}")
-        print(f"STDOUT:\n{e.stdout.strip()}")
-        print(f"STDERR:\n{e.stderr.strip()}")
-        return ""
-
 def get_hls_url(url):
     base = ["yt-dlp", "--cookies", COOKIES_FILE, "--dump-json", url]
     try:
         r = subprocess.run(base, capture_output=True, text=True, check=True)
         data = json.loads(r.stdout)
-        # Öncelik: HLS manifest
+
+        # Öncelik: HLS manifest URL
         if "hls_manifest_url" in data:
             return data["hls_manifest_url"]
+
+        # Alternatif: formats içinde HLS protokolü
         for f in data.get("formats", []):
             if f.get("protocol") == "m3u8" and f.get("url"):
                 return f["url"]
-        # Fallback: en iyi mp4
+
+        # Son çare: en iyi mp4
         for f in data.get("formats", []):
             if f.get("ext") == "mp4" and f.get("url"):
                 return f["url"]
+
     except subprocess.CalledProcessError as e:
         print(f"[yt-dlp dump-json hata] {url} code={e.returncode}\nSTDERR:\n{e.stderr.strip()}")
+
     return None
 
 def generate_m3u(csv_file, m3u_file):
