@@ -42,7 +42,7 @@ def main():
             url = url.strip()
             final_link = get_stream_url(url)
             if final_link:
-                lines.append(f'#EXTINF:-1 tvg-name="{title}", {title}')
+                lines.append(f'#EXTINF:-1 tvg-name="{title}" group-title="YouTube", {title}')
                 lines.append("#EXTVLCOPT:http-user-agent=Mozilla/5.0")
                 lines.append("#EXTVLCOPT:http-referrer=https://www.youtube.com/")
                 lines.append(final_link)
