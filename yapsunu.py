@@ -1,47 +1,51 @@
+#!/usr/bin/env python3
 import csv
 import subprocess
-import sys
-from pathlib import Path
+import os
 
-INPUT_FILE = "input.csv"
-OUTPUT_FILE = "playlist.m3u"
-COOKIES_FILE = "cookies.txt"
+COOKIES_FILE = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "cookies.txt")
 
-def get_stream_urls(url):
-    if "youtube.com" in url or "youtu.be" in url:
-        cmd = ["yt-dlp", "--cookies", COOKIES_FILE, "-f", "bestvideo+bestaudio/best", "-g", url]
-    elif "twitch.tv" in url:
-        cmd = ["yt-dlp", "--cookies", COOKIES_FILE, "-f", "best", "-g", url]
-    else:
-        cmd = ["yt-dlp", "--cookies", COOKIES_FILE, "-f", "best", "-g", url]
-
+def run_cmd(cmd):
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return [u for u in result.stdout.strip().split("\n") if u]
+        return result.stdout.strip().split("\n")
     except subprocess.CalledProcessError as e:
-        print(f"Hata: {url} için link alınamadı -> {e}", file=sys.stderr)
+        print(f"[yt-dlp hata] cmd={' '.join(cmd)} code={e.returncode}")
+        print(f"STDOUT:\n{e.stdout.strip()}")
+        print(f"STDERR:\n{e.stderr.strip()}")
         return []
 
-def main():
-    lines = ["#EXTM3U"]
-    with open(INPUT_FILE, newline="", encoding="utf-8") as f:
+def get_manifest_url(youtube_url):
+    base = ["yt-dlp", "--cookies", COOKIES_FILE]
+    tries = [
+        base + ["-v", "-g", youtube_url],
+        base + ["-f", "bestvideo+bestaudio", "--get-url", youtube_url],
+        base + ["-f", "best[ext=mp4]", "--get-url", youtube_url],
+        base + ["-f", "bestaudio", "--get-url", youtube_url],
+    ]
+    for cmd in tries:
+        urls = run_cmd(cmd)
+        if urls:
+            return urls[0]
+    print(f"Hata: {youtube_url} için oynatılabilir link alınamadı")
+    return None
+
+def generate_m3u(csv_file, m3u_file):
+    with open(csv_file, newline='', encoding='utf-8') as f, open(m3u_file, 'w', encoding='utf-8') as out:
         reader = csv.reader(f)
-        next(reader, None)
-        for title, url in reader:
-            urls = get_stream_urls(url.strip())
-            if urls:
-                lines.append(f'#EXTINF:-1 tvg-name="{title}" group-title="Auto", {title}')
-                lines.append("#EXTVLCOPT:http-user-agent=Mozilla/5.0")
-                lines.append("#EXTVLCOPT:http-referrer=https://www.youtube.com/")
-                for u in urls:
-                    lines.append(u)
+        out.write("#EXTM3U\n")
+        for row in reader:
+            if len(row) < 2:
+                print(f"Satır hatalı: {row}")
+                continue
+            name, url = row[0].strip(), row[1].strip()
+            manifest_url = get_manifest_url(url)
+            if manifest_url:
+                out.write(f"#EXTINF:-1,{name}\n{manifest_url}\n")
             else:
-                print(f"Uyarı: {title} için uygun link bulunamadı.", file=sys.stderr)
-
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-
-    print(f"{OUTPUT_FILE} oluşturuldu.")
+                print(f"Hata: {url} için oynatılabilir link bulunamadı.")
 
 if __name__ == "__main__":
-    main()
+    outfile = os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "playlist.m3u")
+    generate_m3u("input.csv", outfile)
+    print(f"playlist.m3u oluşturuldu: {outfile}")
