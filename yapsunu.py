@@ -1,21 +1,22 @@
 import csv
 import subprocess
 
-def get_manifest_url(youtube_url):
+def get_manifest_url(url):
     try:
-        # yt-dlp -g komutunu çalıştır
-        result = subprocess.run(
-            ["yt-dlp", "-g", youtube_url],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        # Birden fazla satır dönebilir (video + ses ayrı olabilir)
-        urls = result.stdout.strip().split("\n")
-        return urls[0] if urls else None
+        if "youtube.com" in url or "youtu.be" in url:
+            cmd = ["yt-dlp", "-f", "bestvideo+bestaudio/best", "-g", url]
+        elif "twitch.tv" in url:
+            cmd = ["yt-dlp", "-f", "best", "-g", url]
+        else:
+            cmd = ["yt-dlp", "-f", "best", "-g", url]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        urls = [u for u in result.stdout.strip().split("\n") if u]
+        # Eğer video+audio iki link dönerse, playlist’e ikisini de yazabilirsin
+        return urls
     except subprocess.CalledProcessError as e:
-        print(f"Hata: {youtube_url} için manifest alınamadı -> {e}")
-        return None
+        print(f"Hata: {url} için manifest alınamadı -> {e}")
+        return []
 
 rows = []
 with open("input.csv", newline="", encoding="utf-8") as f:
