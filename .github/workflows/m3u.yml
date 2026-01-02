@@ -22,8 +22,8 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install yt-dlp
-        run: pip install -U yt-dlp
+      - name: Install yt-dlp (nightly)
+        run: pip install -U git+https://github.com/yt-dlp/yt-dlp.git
 
       - name: Install Node.js (JS runtime for yt-dlp)
         uses: actions/setup-node@v3
