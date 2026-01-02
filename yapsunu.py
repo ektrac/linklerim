@@ -5,26 +5,33 @@ from pathlib import Path
 
 INPUT_FILE = "input.csv"
 OUTPUT_FILE = "playlist.m3u"
-COOKIES_FILE = "cookies.txt"  # varsa anonim/non-login cookies.txt, yoksa None bırak
+COOKIES_FILE = "cookies.txt"  # varsa anonim/non-login cookies.txt
 
-def get_stream_url(youtube_url):
-    # Önce HLS video+audio dene, yoksa progressive fallback
-    cmd = ["yt-dlp", "-f", "625+140/625+bestaudio/best[ext=mp4]/best", "-g", youtube_url]
+def get_stream_urls(url: str):
+    # Domain bazlı format seçimi
+    if "youtube.com" in url or "youtu.be" in url:
+        base = ["-f", "bestvideo+bestaudio/best", "-g"]
+    elif "twitch.tv" in url:
+        base = ["-f", "best", "-g"]
+    else:
+        base = ["-f", "best", "-g"]
+
+    cmd = [
+        "yt-dlp",
+        "--user-agent", "Mozilla/5.0",
+        "--referer", "https://www.youtube.com/",
+    ] + base + [url]
+
     if COOKIES_FILE and Path(COOKIES_FILE).exists():
         cmd[1:1] = ["--cookies", COOKIES_FILE]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         urls = [u for u in result.stdout.strip().split("\n") if u]
-        if urls:
-            # Eğer tek link dönerse direkt al
-            if len(urls) == 1:
-                return urls[0]
-            # Eğer iki link dönerse (video+audio), VLC genelde mux edebiliyor
-            return urls[0]
+        return urls
     except subprocess.CalledProcessError as e:
-        print(f"Hata: {youtube_url} için link alınamadı -> {e}", file=sys.stderr)
-        return None
+        print(f"Hata: {url} için link alınamadı -> {e}", file=sys.stderr)
+        return []
 
 def main():
     input_path = Path(INPUT_FILE)
@@ -38,14 +45,12 @@ def main():
         reader = csv.reader(f)
         next(reader, None)  # başlık satırını atla
         for title, url in reader:
-            title = title.strip()
-            url = url.strip()
-            final_link = get_stream_url(url)
-            if final_link:
-                lines.append(f'#EXTINF:-1 tvg-name="{title}" group-title="YouTube", {title}')
+            urls = get_stream_urls(url.strip())
+            if urls:
+                lines.append(f'#EXTINF:-1 tvg-name="{title.strip()}", {title.strip()}')
                 lines.append("#EXTVLCOPT:http-user-agent=Mozilla/5.0")
                 lines.append("#EXTVLCOPT:http-referrer=https://www.youtube.com/")
-                lines.append(final_link)
+                lines.extend(urls)
             else:
                 print(f"Uyarı: {title} için uygun link bulunamadı.", file=sys.stderr)
 
