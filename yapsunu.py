@@ -1,87 +1,30 @@
 import csv
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 INPUT_FILE = "input.csv"
 OUTPUT_FILE = "playlist.m3u"
-COOKIES_FILE = "cookies.txt"  # non-login cookies varsa aynı dizinde
-RETRY = 2                     # kısa retry denemeleri
-TIMEOUT = 45                  # saniye
+COOKIES_FILE = "cookies.txt"  # varsa anonim/non-login cookies.txt, yoksa None bırak
 
-def run_ytdlp(cmd):
-    # Komutları görünür kıl: debug için log yaz
-    print(f"[cmd] {' '.join(cmd)}")
-    res = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=TIMEOUT
-    )
-    if res.stdout.strip():
-        print("[stdout]")
-        print(res.stdout)
-    if res.stderr.strip():
-        print("[stderr]")
-        print(res.stderr, file=sys.stderr)
-    return res
-
-def build_cmd(base, url):
-    cmd = ["yt-dlp", "-v"] + base + [url]
+def get_stream_url(youtube_url):
+    # Önce HLS video+audio dene, yoksa progressive fallback
+    cmd = ["yt-dlp", "-f", "625+140/625+bestaudio/best[ext=mp4]/best", "-g", youtube_url]
     if COOKIES_FILE and Path(COOKIES_FILE).exists():
         cmd[1:1] = ["--cookies", COOKIES_FILE]
-    # Bazı ortamlarda UA/referrer yardımcı olabilir
-    cmd[1:1] = ["--user-agent", "Mozilla/5.0", "--referer", "https://www.youtube.com/"]
-    return cmd
 
-def get_urls_youtube(url):
-    # Format fallbacks: en üstte birleşik, sonra progressive, sonra en iyisi
-    formats = [
-        ["-f", "bestvideo+bestaudio/best", "-g"],
-        ["-f", "best[ext=mp4]/best", "-g"],
-        ["-f", "best", "-g"]
-    ]
-    for base in formats:
-        for attempt in range(RETRY + 1):
-            res = run_ytdlp(build_cmd(base, url))
-            if res.returncode == 0:
-                urls = [u for u in res.stdout.strip().split("\n") if u]
-                if urls:
-                    return urls
-            else:
-                # Bazı nsig hataları geçici olabilir; kısacık bekle
-                time.sleep(1.0)
-    return []
-
-def get_urls_twitch(url):
-    # Twitch çoğu zaman HLS manifest döndürür; best genellikle yeterli
-    formats = [
-        ["-f", "best", "-g"],
-        ["-f", "best", "-g", "--compat-options", "youtube-dl"]
-    ]
-    for base in formats:
-        for attempt in range(RETRY + 1):
-            res = run_ytdlp(build_cmd(base, url))
-            if res.returncode == 0:
-                urls = [u for u in res.stdout.strip().split("\n") if u]
-                if urls:
-                    return urls
-            else:
-                time.sleep(1.0)
-    return []
-
-def get_stream_urls(url):
-    if "youtube.com" in url or "youtu.be" in url:
-        return get_urls_youtube(url)
-    if "twitch.tv" in url:
-        return get_urls_twitch(url)
-    # Diğer alanlar için düz best
-    base = ["-f", "best", "-g"]
-    res = run_ytdlp(build_cmd(base, url))
-    if res.returncode == 0:
-        return [u for u in res.stdout.strip().split("\n") if u]
-    return []
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        urls = [u for u in result.stdout.strip().split("\n") if u]
+        if urls:
+            # Eğer tek link dönerse direkt al
+            if len(urls) == 1:
+                return urls[0]
+            # Eğer iki link dönerse (video+audio), VLC genelde mux edebiliyor
+            return urls[0]
+    except subprocess.CalledProcessError as e:
+        print(f"Hata: {youtube_url} için link alınamadı -> {e}", file=sys.stderr)
+        return None
 
 def main():
     input_path = Path(INPUT_FILE)
@@ -90,19 +33,19 @@ def main():
         sys.exit(1)
 
     lines = ["#EXTM3U"]
+
     with input_path.open(newline="", encoding="utf-8") as f:
         reader = csv.reader(f)
-        next(reader, None)  # başlık: title,url
+        next(reader, None)  # başlık satırını atla
         for title, url in reader:
             title = title.strip()
             url = url.strip()
-            urls = get_stream_urls(url)
-            if urls:
-                lines.append(f'#EXTINF:-1 tvg-name="{title}" group-title="Auto", {title}')
+            final_link = get_stream_url(url)
+            if final_link:
+                lines.append(f'#EXTINF:-1 tvg-name="{title}" group-title="YouTube", {title}')
                 lines.append("#EXTVLCOPT:http-user-agent=Mozilla/5.0")
-                # YouTube referrer pek çok player için faydalı, Twitch’e de zarar vermez
                 lines.append("#EXTVLCOPT:http-referrer=https://www.youtube.com/")
-                lines.extend(urls)
+                lines.append(final_link)
             else:
                 print(f"Uyarı: {title} için uygun link bulunamadı.", file=sys.stderr)
 
