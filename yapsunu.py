@@ -7,9 +7,14 @@ INPUT_FILE = "input.csv"
 OUTPUT_FILE = "playlist.m3u"
 COOKIES_FILE = "cookies.txt"  # varsa anonim/non-login cookies.txt, yoksa None bırak
 
-def get_stream_url(youtube_url):
-    # Önce HLS video+audio dene, yoksa progressive fallback
-    cmd = ["yt-dlp", "-f", "625+140/625+bestaudio/best[ext=mp4]/best", "-g", youtube_url]
+def get_stream_url(url):
+    if "youtube.com" in url or "youtu.be" in url:
+        cmd = ["yt-dlp", "-f", "bestvideo+bestaudio/best", "-g", url]
+    elif "twitch.tv" in url:
+        cmd = ["yt-dlp", "-f", "best", "-g", url]
+    else:
+        cmd = ["yt-dlp", "-f", "best", "-g", url]
+
     if COOKIES_FILE and Path(COOKIES_FILE).exists():
         cmd[1:1] = ["--cookies", COOKIES_FILE]
 
@@ -17,14 +22,11 @@ def get_stream_url(youtube_url):
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         urls = [u for u in result.stdout.strip().split("\n") if u]
         if urls:
-            # Eğer tek link dönerse direkt al
-            if len(urls) == 1:
-                return urls[0]
-            # Eğer iki link dönerse (video+audio), VLC genelde mux edebiliyor
-            return urls[0]
+            return urls[0]  # Tek link dönerse
     except subprocess.CalledProcessError as e:
-        print(f"Hata: {youtube_url} için link alınamadı -> {e}", file=sys.stderr)
+        print(f"Hata: {url} için link alınamadı -> {e}", file=sys.stderr)
         return None
+
 
 def main():
     input_path = Path(INPUT_FILE)
