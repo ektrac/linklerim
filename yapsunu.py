@@ -51,6 +51,7 @@ def get_stream_urls(video_url):
         "--user-agent", "Mozilla/5.0",
         "--referer", "https://www.youtube.com/",
         "-f", "bestvideo+bestaudio/best",
+        "--cookies" "cookies.txt",
         "-g", video_url
     ]
     if COOKIES_FILE and Path(COOKIES_FILE).exists():
