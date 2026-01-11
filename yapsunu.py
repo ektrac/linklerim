@@ -36,7 +36,7 @@ def get_stream_url(youtube_url):
     cmd = [
         "yt-dlp",
         "--js-runtimes", "node",  # Node.js runtime kullan
-        "--cookies", cookies.txt, # buraya cookies parametresi eklendi
+        "--cookies", COOKIES_FILE, # buraya cookies parametresi eklendi
         "-f", "625+140/625+bestaudio/best[ext=mp4]/best",
         "-g", youtube_url
     ]
